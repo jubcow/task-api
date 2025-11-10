@@ -1,6 +1,14 @@
 from flask import Flask, jsonify, request
 import os
 from datetime import datetime
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -10,6 +18,7 @@ task_id_counter = 1
 
 @app.route('/')
 def home():
+    logger.info("Home endpoint accessed")
     return jsonify({
         "message": "Task Manager API",
         "version": "1.0.0",
