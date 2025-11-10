@@ -1,0 +1,105 @@
+name: Deploy to Production
+
+# Trigger on push to main branch
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger with approval
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/task-api
+  REGISTRY: docker.io
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production  # Requires approval in GitHub settings
+    
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      # Step 3: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # Step 4: Build and push Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:v${{ github.run_number }}
+            ${{ env.DOCKER_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
+      
+      # Step 5: Install kubectl
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+      
+      # Step 6: Configure kubectl (simulated)
+      - name: Configure kubectl
+        run: |
+          echo "In production, you'd configure kubectl here with:"
+          echo "  - Production cluster API endpoint"
+          echo "  - Service account with restricted permissions"
+          echo "  - Production namespace access only"
+      
+      # Step 7: Deploy to Production (with safety checks)
+      - name: Deploy to Production Environment
+        run: |
+          echo "🚀 Deploying to Production Environment"
+          echo "Image: ${{ env.DOCKER_IMAGE }}:v${{ github.run_number }}"
+          echo "Namespace: task-api-prod"
+          echo ""
+          echo "Production deployment commands that would run:"
+          echo "kubectl set image deployment/task-api task-api=${{ env.DOCKER_IMAGE }}:v${{ github.run_number }} -n task-api-prod"
+          echo "kubectl rollout status deployment/task-api -n task-api-prod --timeout=5m"
+          echo ""
+          echo "Health check command:"
+          echo "kubectl wait --for=condition=ready pod -l app=task-api -n task-api-prod --timeout=300s"
+          echo ""
+          echo "✅ Build completed successfully!"
+          echo "✅ Image pushed to registry with version tag"
+          echo "✅ Ready to deploy (configure kubectl access to enable auto-deploy)"
+      
+      # Step 8: Rollback capability info
+      - name: Rollback Information
+        run: |
+          echo "If deployment fails, rollback with:"
+          echo "kubectl rollout undo deployment/task-api -n task-api-prod"
+      
+      # Step 9: Deployment summary
+      - name: Deployment Summary
+        run: |
+          echo "### Production Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`v${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.DOCKER_IMAGE }}:v${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To deploy manually, run:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl set image deployment/task-api task-api=${{ env.DOCKER_IMAGE }}:v${{ github.run_number }} -n task-api-prod" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To rollback if needed:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl rollout undo deployment/task-api -n task-api-prod" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

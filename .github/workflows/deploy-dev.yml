@@ -1,0 +1,93 @@
+name: Deploy to Dev
+
+# Trigger on push to develop branch
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/task-api
+  REGISTRY: docker.io
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up Docker Buildx (for better builds)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      # Step 3: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # Step 4: Build and push Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:dev-${{ github.sha }}
+            ${{ env.DOCKER_IMAGE }}:dev-latest
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
+      
+      # Step 5: Install kubectl
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+      
+      # Step 6: Set up kubeconfig (for local/self-hosted runners)
+      # NOTE: For this demo, we'll simulate deployment
+      # In production, you'd configure actual cluster access
+      - name: Configure kubectl
+        run: |
+          echo "In production, you'd configure kubectl here with:"
+          echo "  - Cluster API endpoint"
+          echo "  - Service account token"
+          echo "  - CA certificate"
+          echo ""
+          echo "For this demo, deployment commands would be:"
+          echo "kubectl set image deployment/task-api task-api=${{ env.DOCKER_IMAGE }}:dev-${{ github.sha }} -n task-api-dev"
+      
+      # Step 7: Deploy to Kubernetes (simulated for demo)
+      - name: Deploy to Dev Environment
+        run: |
+          echo "🚀 Deploying to Development Environment"
+          echo "Image: ${{ env.DOCKER_IMAGE }}:dev-${{ github.sha }}"
+          echo "Namespace: task-api-dev"
+          echo ""
+          echo "Deployment command that would run:"
+          echo "kubectl set image deployment/task-api task-api=${{ env.DOCKER_IMAGE }}:dev-${{ github.sha }} -n task-api-dev"
+          echo "kubectl rollout status deployment/task-api -n task-api-dev"
+          echo ""
+          echo "✅ Build completed successfully!"
+          echo "✅ Image pushed to registry"
+          echo "✅ Ready to deploy (configure kubectl access to enable auto-deploy)"
+      
+      # Step 8: Output deployment info
+      - name: Deployment Summary
+        run: |
+          echo "### Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Development" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.DOCKER_IMAGE }}:dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To deploy manually, run:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl set image deployment/task-api task-api=${{ env.DOCKER_IMAGE }}:dev-${{ github.sha }} -n task-api-dev" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

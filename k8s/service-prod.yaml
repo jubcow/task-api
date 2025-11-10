@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-api-service
+  namespace: task-api-prod
+  labels:
+    app: task-api
+spec:
+  type: NodePort  # Accessible via node IP + port
+  selector:
+    app: task-api
+  ports:
+  - port: 80          # Service port
+    targetPort: 5000  # Container port
+    nodePort: 30081   # External access port (different from dev)
+    protocol: TCP
+    name: http
